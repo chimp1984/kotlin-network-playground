@@ -19,7 +19,7 @@ repositories {
 
 dependencies {
     implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.2-native-mt")
 
     implementation("ch.qos.logback:logback-classic:1.2.6")
 

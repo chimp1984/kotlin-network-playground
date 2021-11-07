@@ -33,6 +33,7 @@ class TestNode {
                     log.info { "Received: $message on node1111" }
                     assert(message.value == msg2)
                     latch.countDown()
+                    cancel()
                 }
             }
             launch {
@@ -40,17 +41,19 @@ class TestNode {
                     log.info { "Received: $message on node2222" }
                     assert(message.value == msg1)
                     latch.countDown()
+                    cancel()
                 }
             }
 
             node1111.send(Address.localhost(2222), Message(msg1))
             node2222.send(Address.localhost(1111), Message(msg2))
 
-            async {
+            launch {
                 kotlin.runCatching {
                     latch.await()
                 }
             }
+
         }
     }
 }

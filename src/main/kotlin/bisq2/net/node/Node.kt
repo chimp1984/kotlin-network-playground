@@ -8,10 +8,10 @@ import bisq2.net.connection.OutboundConnection
 import bisq2.net.socket.ClearNetSocketFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.net.Socket
 
@@ -22,19 +22,16 @@ class Node(private val socketFactory: ClearNetSocketFactory) {
     private val outboundConnections: HashMap<Address, OutboundConnection> = HashMap()
     val messageChannel = Channel<Message>()
 
-    suspend fun startServer(port: Int) {
-        val result = getServerAsync(port).await()
-        val server = Server(result.serverSocket)
-        startListen(server)
-    }
-
-    private fun getServerAsync(port: Int) =
-        CoroutineScope(IO).async {
+    suspend fun startServer(port: Int) =
+        withContext(IO) {
             socketFactory.initialize()
-            return@async socketFactory.createServerSocket("", port).getOrThrow()
+            val result = socketFactory.createServerSocket("", port).getOrThrow()
+            val server = Server(result.serverSocket)
+
+            startListen(server)
         }
 
-    private fun startListen(server: Server) {
+    private suspend fun startListen(server: Server) {
         val socketChannel = Channel<Socket>()
         CoroutineScope(IO).launch {
             log.info { "Awaiting new sockets from server via socketChannel" }
@@ -59,13 +56,13 @@ class Node(private val socketFactory: ClearNetSocketFactory) {
             connection.startListen(messageChannel)
         }
 
-        launch {
-            log.info { "Awaiting new messages from $connection" }
-            // todo provide msg to listeners
-            /* for (message in messageChannel) {
-                 log.info { "Received: $message on $connection" }
-             }*/
-        }
+        /*   launch {
+               log.info { "Awaiting new messages from $connection" }
+               // todo provide msg to listeners
+                for (message in messageChannel) {
+                    log.info { "Received: $message on $connection" }
+                }
+           }*/
     }
 
     suspend fun connect(address: Address): OutboundConnection =
@@ -88,7 +85,7 @@ class Node(private val socketFactory: ClearNetSocketFactory) {
     suspend fun send(address: Address, message: Message) =
         coroutineScope {
             log.info { "Send $message to $address" }
-            val outboundConnection = outboundConnections.getOrDefault(address, connect(address))
+            val outboundConnection = outboundConnections.getOrElse(address) { connect(address) }
             outboundConnection.send(message)
         }
 }
